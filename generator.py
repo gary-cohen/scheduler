@@ -17,24 +17,13 @@ class CareMember:
 
 def weights(members, day, iteration):
     shifts = [member.schedule[day] for member in members]
-    w = []
-    for num_of_shifts in shifts:
-        if num_of_shifts >= 2:
-            w.extend([0])
-        else:
-            w.extend([abs(num_of_shifts - iteration) + 1])
+    w = [0 if num_of_shifts >= 2 else abs(num_of_shifts - iteration) + 1 for num_of_shifts in shifts]
     return w, sum(w)
 
 
 def probability(members, day, iteration):
     weights_for_day, total_weights = weights(members, day, iteration)
-    p = []
-    for weight in weights_for_day:
-        if weight == 0:
-            p.extend([0])
-        else:
-            p.extend([weight / total_weights])
-    return p
+    return [weight / total_weights for weight in weights_for_day]
 
 
 def schedule(members):
