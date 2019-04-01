@@ -6,18 +6,37 @@ class CareMember:
         self.name = name
         self.level = level
         self.schedule = {"monday": 0, "tuesday": 0, "wednesday": 0, "thursday": 0,
-                         "friday": 0, "saturday": 0, "sunday": 0}
+                         "friday": 0}
 
     def increment_shift(self, day):
         self.schedule[day] += 1
+
+    def number_of_shifts_yesterday(self, day):
+        if "monday" == day:
+            return 0
+        elif "tuesday" == day:
+            return self.schedule["monday"]
+        elif "wednesday" == day:
+            return self.schedule["tuesday"]
+        elif "thursday" == day:
+            return self.schedule["wednesday"]
+        elif "friday" == day:
+            return self.schedule["thursday"]
+        elif "saturday" == day:
+            return self.schedule["friday"]
+        elif "sunday" == day:
+            return self.schedule["saturday"]
 
     def __repr__(self):
         return self.name
 
 
 def weights(members, day, iteration):
-    shifts = [member.schedule[day] for member in members]
-    w = [0 if num_of_shifts >= 2 else abs(num_of_shifts - iteration) + 1 for num_of_shifts in shifts]
+    shifts = [(member.schedule[day], member) for member in members]
+    w = [0
+         if num_of_shifts >= 2
+         else (abs(num_of_shifts - iteration) + 1) ** (10 + (3-member.number_of_shifts_yesterday(day)))
+         for (num_of_shifts, member) in shifts]
     return w, sum(w)
 
 
@@ -53,7 +72,7 @@ def main():
 
     schedule(members)
     for member in members:
-        print("{} ({} shifts)\n{}\n".format(member.name, sum([member.schedule[day] for day in member.schedule]), member.schedule))
+        print("{} ({} shifts) [{}]\n{}\n".format(member.name, sum([member.schedule[day] for day in member.schedule]), member.level, member.schedule))
 
 
 main()
