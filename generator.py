@@ -43,7 +43,7 @@ class CareMember:
 
 
 def weights(members: [CareMember], day: str, shift_number: int) -> (int, int):
-    w = [member.schedule_weight(day, shift_number)for member in members]
+    w = [member.schedule_weight(day, shift_number) for member in members]
     return w, sum(w)
 
 
@@ -58,7 +58,15 @@ def generate_members_for_shift(members: [CareMember], day: str, shift_number: in
     elif shift_number is 0 or shift_number is 1:
         return choice(members, p=probability(members, day, shift_number), replace=False, size=amount)
     else:
-        return sorted(members, key=lambda x: x.schedule_weight(day, shift_number))[-amount:]
+        # if a member was scheduled for shift 1, they cannot be scheduled in shift 2
+        available_members = members
+        if shift_number is 2:
+            non_available_members = []
+            for member in members:
+                if member.schedule[day][1]:
+                    non_available_members.append(member)
+            available_members = list(set(members) - set(non_available_members))
+        return sorted(available_members, key=lambda x: x.schedule_weight(day, shift_number))[-amount:]
 
 
 def schedule(members: [CareMember]):
