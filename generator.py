@@ -1,6 +1,9 @@
 from bitarray import bitarray
 from numpy.random import choice, shuffle
+from random import randint
 
+import math
+import numpy as np
 
 NUMBER_OF_SHIFTS_PER_DAY = 4
 NUMBER_OF_MEMBERS_PER_SHIFT = 4
@@ -17,25 +20,24 @@ class CareMember:
         self.schedule[day].append(add_to_schedule)
 
     def number_of_shifts_yesterday(self, day: str) -> int:
-        if "monday" is day:
+        if "monday" == day:
             return self.schedule["sunday"].count()
-        elif "tuesday" is day:
+        elif "tuesday" == day:
             return self.schedule["monday"].count()
-        elif "wednesday" is day:
+        elif "wednesday" == day:
             return self.schedule["tuesday"].count()
-        elif "thursday" is day:
+        elif "thursday" == day:
             return self.schedule["wednesday"].count()
-        elif "friday" is day:
+        elif "friday" == day:
             return self.schedule["thursday"].count()
-        elif "saturday" is day:
+        elif "saturday" == day:
             return self.schedule["friday"].count()
-        elif "sunday" is day:
+        elif "sunday" == day:
             return self.schedule["saturday"].count()
 
     def schedule_weight(self, day: str, shift_number: str) -> int:
         num_of_shifts = self.schedule[day].count()
-        w = 0 if num_of_shifts >= 2 \
-            else (abs(num_of_shifts - shift_number) + 1) ** (10 + (3-self.number_of_shifts_yesterday(day)))
+        w = (abs(num_of_shifts - shift_number) + 1) ** (10 + (3-self.number_of_shifts_yesterday(day)))
         return w
 
     def __repr__(self) -> str:
@@ -52,21 +54,64 @@ def probability(members: [CareMember], day: str, shift_number: int) -> [int]:
     return [weight / total_weights for weight in weights_for_day]
 
 
-def generate_members_for_shift(members: [CareMember], day: str, shift_number: int, amount: int) -> [CareMember]:
-    if day is "monday" and shift_number is 0:
+def get_members_by_level(members: [CareMember]) -> ([CareMember], [CareMember]):
+    experienced_members = []
+    new_members = []
+
+    for member in members:
+        if "experienced" == member.level:
+            experienced_members.append(member)
+        else:
+            new_members.append(member)
+
+    return experienced_members, new_members
+
+
+def get_amount_of_members(experienced_members: [CareMember], new_members: [CareMember], total: int) -> (int, int):
+    # we need at least one experienced member per shift
+    max_number_of_experienced = math.floor((len(experienced_members) / len(new_members)) * total) \
+        if len(new_members) > 0 else 1
+    number_of_experienced = 1 if max_number_of_experienced == 1 else randint(1, max_number_of_experienced)
+    return number_of_experienced, total - number_of_experienced
+
+
+def get_members_for_shift(members: [CareMember], day: str, shift_number: int, total: int) -> [CareMember]:
+    if "monday" == day and shift_number == 0:
         return members
-    elif shift_number is 0 or shift_number is 1:
-        return choice(members, p=probability(members, day, shift_number), replace=False, size=amount)
+    elif shift_number == 0 or shift_number == 1:
+        experienced_members, new_members = get_members_by_level(members)
+        amount_of_experienced_members, amount_of_new_members = get_amount_of_members(experienced_members, new_members, total)
+        experienced_choice = choice(experienced_members,
+                                    p=probability(experienced_members, day, shift_number),
+                                    replace=False,
+                                    size=amount_of_experienced_members).tolist()
+        new_choice = choice(new_members,
+                            p=probability(new_members, day, shift_number),
+                            replace=False,
+                            size=amount_of_new_members).tolist()
+        return experienced_choice + new_choice
     else:
+        non_available_members = []
+
         # if a member was scheduled for shift 1, they cannot be scheduled in shift 2
-        available_members = members
-        if shift_number is 2:
-            non_available_members = []
+        if shift_number == 2:
             for member in members:
                 if member.schedule[day][1]:
                     non_available_members.append(member)
-            available_members = list(set(members) - set(non_available_members))
-        return sorted(available_members, key=lambda x: x.schedule_weight(day, shift_number))[-amount:]
+
+        # if a member has at least two shifts they're done for the day
+        if shift_number >= 2:
+            for member in members:
+                if member.schedule[day].count() == 2:
+                    non_available_members.append(member)
+
+        available_members = list(set(members) - set(non_available_members))
+
+        experienced_members, new_members = get_members_by_level(available_members)
+        amount_of_experienced_members, amount_of_new_members = get_amount_of_members(experienced_members, new_members, total)
+        experienced_choice = sorted(experienced_members, key=lambda x: x.schedule_weight(day, shift_number))[-amount_of_experienced_members:]
+        new_choice = sorted(new_members, key=lambda x: x.schedule_weight(day, shift_number))[-amount_of_new_members:]
+        return experienced_choice + new_choice
 
 
 def schedule(members: [CareMember]):
@@ -74,7 +119,7 @@ def schedule(members: [CareMember]):
         print(day)
         for shift_number in range(NUMBER_OF_SHIFTS_PER_DAY):
             shuffle(members)
-            members_for_shift = generate_members_for_shift(members, day, shift_number, NUMBER_OF_MEMBERS_PER_SHIFT)
+            members_for_shift = get_members_for_shift(members, day, shift_number, NUMBER_OF_MEMBERS_PER_SHIFT)
             for member in members_for_shift:
                 member.add_shift(day, True)
             for member in list(set(members) - set(members_for_shift)):
