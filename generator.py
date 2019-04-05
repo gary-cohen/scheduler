@@ -71,8 +71,14 @@ def get_amount_of_members(experienced_members: [CareMember], new_members: [CareM
     # we need at least one experienced member per shift
     max_number_of_experienced = math.floor((len(experienced_members) / len(new_members)) * total) \
         if len(new_members) > 0 else 1
-    number_of_experienced = 1 if max_number_of_experienced == 1 else randint(1, max_number_of_experienced)
+    number_of_experienced = max_number_of_experienced if max_number_of_experienced <= 1 else randint(1, max_number_of_experienced)
     return number_of_experienced, total - number_of_experienced
+
+
+def get_member_for_weekly_oncall(members: [CareMember]) -> CareMember:
+    experienced_members, new_members = get_members_by_level(members)
+    shuffle(experienced_members)
+    return experienced_members[1]
 
 
 def get_members_for_shift(members: [CareMember], day: str, shift_number: int, total: int) -> [CareMember]:
@@ -115,14 +121,18 @@ def get_members_for_shift(members: [CareMember], day: str, shift_number: int, to
 
 
 def schedule(members: [CareMember]):
+    member_for_weekly_oncall = get_member_for_weekly_oncall(members)
+    print("Weekly oncall: {}".format(member_for_weekly_oncall))
+    print("")
+    available_members = list(set(members) - {member_for_weekly_oncall})
     for day in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
         print(day)
         for shift_number in range(NUMBER_OF_SHIFTS_PER_DAY):
-            shuffle(members)
-            members_for_shift = get_members_for_shift(members, day, shift_number, NUMBER_OF_MEMBERS_PER_SHIFT)
+            shuffle(available_members)
+            members_for_shift = get_members_for_shift(available_members, day, shift_number, NUMBER_OF_MEMBERS_PER_SHIFT)
             for member in members_for_shift:
                 member.add_shift(day, True)
-            for member in list(set(members) - set(members_for_shift)):
+            for member in list(set(available_members) - set(members_for_shift)):
                 member.add_shift(day, False)
             print(sorted(members_for_shift, key=lambda x: x.name))
         print("")
