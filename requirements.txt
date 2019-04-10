@@ -1,2 +1,4 @@
 bitarray==0.8.*
 numpy==1.16.*
+google-api-python-client
+google-auth
